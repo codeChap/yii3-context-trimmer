@@ -196,14 +196,28 @@ final class ContextTrimmer implements ContextTrimmerInterface
             return $text;
         }
 
-        $filtered = array_map(
-            static fn(string $token): string => preg_match('/^\p{L}+$/u', $token) === 1 && mb_strlen($token) < $minWordLength
-                ? ''
-                : $token,
-            $tokens,
-        );
+        $filtered = [];
+        $prevWasRemoved = false;
 
-        return trim((string) preg_replace('/\s+/', ' ', implode('', $filtered)));
+        foreach ($tokens as $token) {
+            $isShortWord = preg_match('/^\p{L}+$/u', $token) === 1 && mb_strlen($token) < $minWordLength;
+
+            if ($isShortWord) {
+                $prevWasRemoved = true;
+                continue;
+            }
+
+            // Skip whitespace delimiter that followed a removed word
+            if ($prevWasRemoved && preg_match('/^\s+$/u', $token) === 1) {
+                $prevWasRemoved = false;
+                continue;
+            }
+
+            $prevWasRemoved = false;
+            $filtered[] = $token;
+        }
+
+        return trim(implode('', $filtered));
     }
 
     /**
@@ -236,7 +250,21 @@ final class ContextTrimmer implements ContextTrimmerInterface
     private function segmentBySentence(string $input): array
     {
         $sentences = preg_split(
-            '/(?<!Mr)(?<!Mrs)(?<!Ms)(?<!Dr)(?<!Prof)(?<!Sr)(?<!Jr)(?<!St)(?<!vs)(?<!etc)(?<!Inc)(?<!Ltd)(?<!Corp)(?<!approx)(?<![0-9])(?<=[.!?])\s+/',
+            '/'
+            // Common titles
+            . '(?<!Mr)(?<!Mrs)(?<!Ms)(?<!Dr)(?<!Prof)(?<!Sr)(?<!Jr)(?<!Rev)'
+            // Honorifics and address
+            . '(?<!St)(?<!Ave)(?<!Blvd)(?<!Dept)(?<!Gen)(?<!Gov)(?<!Sgt)(?<!Cpl)'
+            // Academic and professional
+            . '(?<!Ph)(?<!Vol)(?<!Fig)(?<!Eq)(?<!No)'
+            // Common Latin/English abbreviations
+            . '(?<!vs)(?<!etc)(?<!approx)(?<!i\.e)(?<!e\.g)'
+            // Corporate suffixes
+            . '(?<!Inc)(?<!Ltd)(?<!Corp)(?<!Co)(?<!Jr)'
+            // Decimal numbers
+            . '(?<![0-9])'
+            // The actual sentence boundary
+            . '(?<=[.!?])\s+/',
             $input,
             -1,
             PREG_SPLIT_NO_EMPTY,

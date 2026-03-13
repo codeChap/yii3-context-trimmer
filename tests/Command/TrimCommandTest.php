@@ -138,4 +138,41 @@ final class TrimCommandTest extends TestCase
             unlink($file);
         }
     }
+
+    public function testNonNumericMaxTokensReturnsFailure(): void
+    {
+        $file = tempnam(sys_get_temp_dir(), 'ctx_');
+        file_put_contents($file, 'Some text.');
+
+        try {
+            $this->tester->execute([
+                'file' => $file,
+                '--max-tokens' => 'abc',
+            ]);
+
+            $this->assertSame(1, $this->tester->getStatusCode());
+            $this->assertStringContainsString('positive integer', $this->tester->getDisplay());
+        } finally {
+            unlink($file);
+        }
+    }
+
+    public function testNonNumericMinWordLengthReturnsFailure(): void
+    {
+        $file = tempnam(sys_get_temp_dir(), 'ctx_');
+        file_put_contents($file, 'Some text here.');
+
+        try {
+            $this->tester->execute([
+                'file' => $file,
+                '--remove-short-words' => true,
+                '--min-word-length' => 'xyz',
+            ]);
+
+            $this->assertSame(1, $this->tester->getStatusCode());
+            $this->assertStringContainsString('positive integer', $this->tester->getDisplay());
+        } finally {
+            unlink($file);
+        }
+    }
 }

@@ -306,4 +306,57 @@ final class ContextTrimmerTest extends TestCase
         // Should be split into multiple segments since budget is small
         $this->assertGreaterThan(1, count($result));
     }
+
+    public function testFilterShortWordsPreservesWhitespaceWhenCompressDisabled(): void
+    {
+        $input = "Hello  I  am  here";
+
+        $result = $this->trimmer
+            ->withMaxTokens(100)
+            ->withRemoveShortWords(true, 2)
+            ->withCompressWhitespace(false)
+            ->trim($input);
+
+        $joined = implode('', $result);
+        // "I" is removed but the double spaces between remaining words should be preserved
+        $this->assertStringContainsString('  ', $joined);
+    }
+
+    public function testFilterShortWordsDoesNotCollapseNewlines(): void
+    {
+        $input = "Hello\n\nworld";
+
+        $result = $this->trimmer
+            ->withMaxTokens(100)
+            ->withRemoveShortWords(true, 2)
+            ->withCompressWhitespace(false)
+            ->trim($input);
+
+        $joined = implode('', $result);
+        $this->assertStringContainsString("\n\n", $joined);
+    }
+
+    public function testSentenceSplitHandlesLatinAbbreviations(): void
+    {
+        $input = 'Use e.g. apples or oranges. They are healthy.';
+
+        $result = $this->trimmer
+            ->withMaxTokens(100)
+            ->trim($input);
+
+        $this->assertCount(1, $result);
+        $this->assertStringContainsString('e.g.', $result[0]);
+    }
+
+    public function testSentenceSplitHandlesNumberedItems(): void
+    {
+        $input = 'Item No. 5 is the best. We should buy it.';
+
+        $result = $this->trimmer
+            ->withMaxTokens(100)
+            ->trim($input);
+
+        $this->assertCount(1, $result);
+        $this->assertStringContainsString('No.', $result[0]);
+    }
 }

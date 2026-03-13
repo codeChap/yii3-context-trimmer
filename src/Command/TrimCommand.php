@@ -90,6 +90,9 @@ final class TrimCommand extends Command
         $maxTokens = $input->getOption('max-tokens');
 
         if ($maxTokens !== null) {
+            if (!ctype_digit($maxTokens)) {
+                throw new InvalidArgumentException('--max-tokens must be a positive integer.');
+            }
             $trimmer = $trimmer->withMaxTokens((int) $maxTokens);
         }
 
@@ -100,6 +103,9 @@ final class TrimCommand extends Command
         if ($input->getOption('remove-short-words')) {
             /** @var string $minWordLength */
             $minWordLength = $input->getOption('min-word-length');
+            if (!ctype_digit($minWordLength)) {
+                throw new InvalidArgumentException('--min-word-length must be a positive integer.');
+            }
             $trimmer = $trimmer->withRemoveShortWords(true, (int) $minWordLength);
         }
 
