@@ -4,7 +4,7 @@ Tokenizer-agnostic text preprocessor for trimming and optimising content to fit 
 
 ## Requirements
 
-- PHP 8.2+
+- PHP 8.2 - 8.5
 
 ## Installation
 
@@ -18,8 +18,10 @@ For Yii3 applications using the config plugin, the DI bindings and params are re
 
 ### Via Dependency Injection (Yii3)
 
+Inject the interface to get a pre-configured trimmer from the DI container:
+
 ```php
-use Codechap\Yii3ContextTrimmer\ContextTrimmerInterface;
+use Codechap\ContextTrimmer\ContextTrimmerInterface;
 
 final class MyService
 {
@@ -37,10 +39,12 @@ final class MyService
 }
 ```
 
+Default configuration is handled via `params.php` — see [Configuration](#yii3-params) below.
+
 ### Standalone
 
 ```php
-use Codechap\Yii3ContextTrimmer\ContextTrimmer;
+use Codechap\ContextTrimmer\ContextTrimmer;
 
 $trimmer = new ContextTrimmer();
 

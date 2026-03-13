@@ -1,17 +1,17 @@
 {
     "name": "codechap/yii3-context-trimmer",
-    "description": "Yii3 text preprocessor for trimming and optimising content for LLM context windows.",
+    "description": "Tokenizer-agnostic text preprocessor for trimming and optimising content for LLM context windows.",
     "type": "library",
     "license": "MIT",
     "keywords": ["yii3", "llm", "context", "trimmer", "tokenizer", "ai"],
     "autoload": {
         "psr-4": {
-            "Codechap\\Yii3ContextTrimmer\\": "src/"
+            "Codechap\\ContextTrimmer\\": "src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "Codechap\\Yii3ContextTrimmer\\Tests\\": "tests/"
+            "Codechap\\ContextTrimmer\\Tests\\": "tests/"
         }
     },
     "authors": [
@@ -21,19 +21,21 @@
         }
     ],
     "require": {
-        "php": "^8.2",
-        "symfony/console": "^6.0 || ^7.0"
+        "php": "8.2 - 8.5"
     },
     "require-dev": {
-        "phpunit/phpunit": "^10.0",
-        "phpstan/phpstan": "^2.0"
+        "phpunit/phpunit": "^10.0 || ^11.0",
+        "vimeo/psalm": "^5.0 || ^6.0",
+        "symfony/console": "^6.0 || ^7.0"
     },
     "suggest": {
-        "yiisoft/yii-console": "Required for using the context:trim console command with the Yii3 console runner"
+        "symfony/console": "Required for using the context:trim console command",
+        "yiisoft/yii-console": "Required for running the context:trim command with the Yii3 console runner"
     },
     "extra": {
         "config-plugin-options": {
-            "source-directory": "config"
+            "source-directory": "config",
+            "merge-plan-file": "../tests/environment/.merge-plan.php"
         },
         "config-plugin": {
             "params": "params.php",
@@ -46,8 +48,8 @@
         }
     },
     "scripts": {
-        "test": "phpunit",
-        "analyse": "phpstan analyse"
+        "test": "phpunit --testdox",
+        "analyse": "psalm"
     },
     "config": {
         "platform": {

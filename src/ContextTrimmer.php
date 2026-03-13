@@ -2,9 +2,21 @@
 
 declare(strict_types=1);
 
-namespace Codechap\Yii3ContextTrimmer;
+namespace Codechap\ContextTrimmer;
 
-use InvalidArgumentException;
+use Codechap\ContextTrimmer\Exception\InvalidTokenLimitException;
+
+use function array_filter;
+use function array_values;
+use function count;
+use function explode;
+use function implode;
+use function mb_strlen;
+use function preg_match;
+use function preg_replace;
+use function preg_split;
+use function sprintf;
+use function trim;
 
 /**
  * Tokenizer-agnostic text preprocessor for trimming content to fit within
@@ -33,7 +45,7 @@ final class ContextTrimmer implements ContextTrimmerInterface
      *        The default tokenizer splits on spaces — a rough heuristic. For accurate token counting,
      *        provide a tokenizer matching your LLM's tokenization (e.g. tiktoken for OpenAI models).
      *
-     * @throws InvalidArgumentException If $maxTokens is less than 2.
+     * @throws InvalidTokenLimitException If $maxTokens is less than 2.
      */
     public function __construct(
         int $maxTokens = 8192,
@@ -45,7 +57,13 @@ final class ContextTrimmer implements ContextTrimmerInterface
         ?callable $tokenizer = null,
     ) {
         if ($maxTokens < 2) {
-            throw new InvalidArgumentException('Token limit must be at least 2.');
+            throw new InvalidTokenLimitException($maxTokens);
+        }
+
+        if ($minWordLength < 1) {
+            throw new \InvalidArgumentException(
+                sprintf('Minimum word length must be at least 1, %d given.', $minWordLength),
+            );
         }
 
         $this->maxTokens = $maxTokens;
@@ -64,12 +82,14 @@ final class ContextTrimmer implements ContextTrimmerInterface
     }
 
     /**
-     * @throws InvalidArgumentException If $maxTokens is less than 2.
+     * Return a new instance with the given max token limit per segment.
+     *
+     * @throws InvalidTokenLimitException If $maxTokens is less than 2.
      */
-    public function withMaxTokens(int $maxTokens): self
+    public function withMaxTokens(int $maxTokens): static
     {
         if ($maxTokens < 2) {
-            throw new InvalidArgumentException('Token limit must be at least 2.');
+            throw new InvalidTokenLimitException($maxTokens);
         }
 
         $clone = clone $this;
@@ -78,7 +98,13 @@ final class ContextTrimmer implements ContextTrimmerInterface
         return $clone;
     }
 
-    public function withRemoveDuplicateLines(bool $remove): self
+    /**
+     * Return a new instance with duplicate line removal enabled or disabled.
+     *
+     * Only non-blank duplicate lines are removed; blank lines are preserved
+     * as structural separators.
+     */
+    public function withRemoveDuplicateLines(bool $remove): static
     {
         $clone = clone $this;
         $clone->removeDuplicateLines = $remove;
@@ -86,8 +112,25 @@ final class ContextTrimmer implements ContextTrimmerInterface
         return $clone;
     }
 
-    public function withRemoveShortWords(bool $remove, int $minWordLength = 2): self
+    /**
+     * Return a new instance with short word removal enabled or disabled.
+     *
+     * WARNING: This aggressively removes all purely-alphabetical words shorter
+     * than $minWordLength. Common words like "I", "a", "of", "in", "to" will
+     * be removed, which may impair readability. Use with caution — this is
+     * intended for token-budget optimization, not human-readable output.
+     *
+     * @param bool $remove Whether to enable short word removal.
+     * @param int $minWordLength Minimum word length to keep (words shorter than this are removed).
+     */
+    public function withRemoveShortWords(bool $remove, int $minWordLength = 2): static
     {
+        if ($minWordLength < 1) {
+            throw new \InvalidArgumentException(
+                sprintf('Minimum word length must be at least 1, %d given.', $minWordLength),
+            );
+        }
+
         $clone = clone $this;
         $clone->removeShortWords = $remove;
         $clone->minWordLength = $minWordLength;
@@ -95,7 +138,14 @@ final class ContextTrimmer implements ContextTrimmerInterface
         return $clone;
     }
 
-    public function withRemoveExtraneous(bool $remove): self
+    /**
+     * Return a new instance with extraneous character removal enabled or disabled.
+     *
+     * WARNING: This removes brackets [], parentheses (), braces {}, angle brackets <>,
+     * and asterisks *. This is aggressive and will destroy Markdown formatting, HTML tags,
+     * and code syntax. Consider whether your use case can tolerate this data loss.
+     */
+    public function withRemoveExtraneous(bool $remove): static
     {
         $clone = clone $this;
         $clone->removeExtraneous = $remove;
@@ -103,7 +153,13 @@ final class ContextTrimmer implements ContextTrimmerInterface
         return $clone;
     }
 
-    public function withCompressWhitespace(bool $compress): self
+    /**
+     * Return a new instance with whitespace compression enabled or disabled.
+     *
+     * When enabled (default), multiple whitespace characters are collapsed into
+     * a single space. Disable this to preserve original whitespace (e.g. for code).
+     */
+    public function withCompressWhitespace(bool $compress): static
     {
         $clone = clone $this;
         $clone->compressWhitespace = $compress;
@@ -111,7 +167,16 @@ final class ContextTrimmer implements ContextTrimmerInterface
         return $clone;
     }
 
-    public function withTokenizer(callable $tokenizer): self
+    /**
+     * Return a new instance with the given tokenizer callable.
+     *
+     * The default tokenizer splits on spaces, which is a rough heuristic. For
+     * accurate token counting, provide a tokenizer that matches your LLM's
+     * tokenization (e.g., tiktoken for OpenAI models).
+     *
+     * @param callable(string): list<string> $tokenizer
+     */
+    public function withTokenizer(callable $tokenizer): static
     {
         $clone = clone $this;
         $clone->tokenizer = $tokenizer;
@@ -119,9 +184,6 @@ final class ContextTrimmer implements ContextTrimmerInterface
         return $clone;
     }
 
-    /**
-     * @throws InvalidArgumentException If maxTokens is invalid.
-     */
     public function trim(string $input): array
     {
         if ($input === '' || trim($input) === '') {
@@ -227,7 +289,9 @@ final class ContextTrimmer implements ContextTrimmerInterface
      */
     private function stripExtraneous(string $text): string
     {
-        return (string) preg_replace('/[\[\]()\{}<>*]/u', '', $text);
+        $result = preg_replace('/[\[\]()\{}<>*]/u', '', $text);
+
+        return $result !== null ? $result : $text;
     }
 
     /**
@@ -235,7 +299,9 @@ final class ContextTrimmer implements ContextTrimmerInterface
      */
     private function compressWhitespaceText(string $text): string
     {
-        return (string) preg_replace('/\s+/u', ' ', trim($text));
+        $result = preg_replace('/\s+/u', ' ', trim($text));
+
+        return $result !== null ? $result : $text;
     }
 
     /**
@@ -261,6 +327,8 @@ final class ContextTrimmer implements ContextTrimmerInterface
             . '(?<!vs)(?<!etc)(?<!approx)(?<!i\.e)(?<!e\.g)'
             // Corporate suffixes
             . '(?<!Inc)(?<!Ltd)(?<!Corp)(?<!Co)(?<!Jr)'
+            // Single uppercase letter abbreviations (e.g. U.S., A.M., P.O.)
+            . '(?<!\b\p{Lu})'
             // Decimal numbers
             . '(?<![0-9])'
             // The actual sentence boundary

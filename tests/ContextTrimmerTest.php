@@ -2,12 +2,18 @@
 
 declare(strict_types=1);
 
-namespace Codechap\Yii3ContextTrimmer\Tests;
+namespace Codechap\ContextTrimmer\Tests;
 
-use Codechap\Yii3ContextTrimmer\ContextTrimmer;
-use Codechap\Yii3ContextTrimmer\ContextTrimmerInterface;
-use InvalidArgumentException;
+use Codechap\ContextTrimmer\ContextTrimmer;
+use Codechap\ContextTrimmer\ContextTrimmerInterface;
+use Codechap\ContextTrimmer\Exception\InvalidTokenLimitException;
 use PHPUnit\Framework\TestCase;
+
+use function count;
+use function explode;
+use function implode;
+use function mb_str_split;
+use function substr_count;
 
 final class ContextTrimmerTest extends TestCase
 {
@@ -62,31 +68,31 @@ final class ContextTrimmerTest extends TestCase
 
     public function testNegativeTokenLimit(): void
     {
-        $this->expectException(InvalidArgumentException::class);
+        $this->expectException(InvalidTokenLimitException::class);
         $this->trimmer->withMaxTokens(-1);
     }
 
     public function testZeroTokenLimit(): void
     {
-        $this->expectException(InvalidArgumentException::class);
+        $this->expectException(InvalidTokenLimitException::class);
         $this->trimmer->withMaxTokens(0);
     }
 
     public function testOneTokenLimit(): void
     {
-        $this->expectException(InvalidArgumentException::class);
+        $this->expectException(InvalidTokenLimitException::class);
         $this->trimmer->withMaxTokens(1);
     }
 
     public function testConstructorThrowsOnInvalidTokens(): void
     {
-        $this->expectException(InvalidArgumentException::class);
+        $this->expectException(InvalidTokenLimitException::class);
         new ContextTrimmer(maxTokens: 0);
     }
 
     public function testConstructorThrowsOnOneToken(): void
     {
-        $this->expectException(InvalidArgumentException::class);
+        $this->expectException(InvalidTokenLimitException::class);
         new ContextTrimmer(maxTokens: 1);
     }
 
@@ -358,5 +364,68 @@ final class ContextTrimmerTest extends TestCase
 
         $this->assertCount(1, $result);
         $this->assertStringContainsString('No.', $result[0]);
+    }
+
+    public function testSentenceSplitHandlesUppercaseLetterAbbreviations(): void
+    {
+        $input = 'The U.S. is large. It has many states.';
+
+        $result = $this->trimmer
+            ->withMaxTokens(100)
+            ->trim($input);
+
+        $this->assertCount(1, $result);
+        $this->assertStringContainsString('U.S.', $result[0]);
+    }
+
+    public function testConstructorThrowsOnNegativeMinWordLength(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Minimum word length must be at least 1');
+        new ContextTrimmer(minWordLength: -1);
+    }
+
+    public function testConstructorThrowsOnZeroMinWordLength(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        new ContextTrimmer(minWordLength: 0);
+    }
+
+    public function testWithRemoveShortWordsThrowsOnNegativeMinWordLength(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Minimum word length must be at least 1');
+        $this->trimmer->withRemoveShortWords(true, -1);
+    }
+
+    public function testMultibyteUnicodeTextWithDefaultTokenizer(): void
+    {
+        // Default tokenizer splits on spaces — CJK text without spaces becomes one token
+        $input = '这是一段中文文本';
+
+        $result = $this->trimmer
+            ->withMaxTokens(100)
+            ->trim($input);
+
+        $this->assertCount(1, $result);
+        $this->assertSame('这是一段中文文本', $result[0]);
+        // Default tokenizer treats the whole string as 1 token (no spaces)
+        $this->assertSame(1, $this->trimmer->countTokens($input));
+    }
+
+    public function testMultibyteUnicodeTextWithCustomTokenizer(): void
+    {
+        // A character-level tokenizer handles CJK properly
+        $trimmer = new ContextTrimmer(
+            tokenizer: static fn(string $text): array => mb_str_split($text),
+        );
+
+        $input = '这是一段中文文本';
+
+        $this->assertSame(8, $trimmer->countTokens($input));
+
+        $result = $trimmer->withMaxTokens(4)->trim($input);
+
+        $this->assertGreaterThan(1, count($result));
     }
 }

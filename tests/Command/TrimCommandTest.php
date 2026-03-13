@@ -2,12 +2,20 @@
 
 declare(strict_types=1);
 
-namespace Codechap\Yii3ContextTrimmer\Tests\Command;
+namespace Codechap\ContextTrimmer\Tests\Command;
 
-use Codechap\Yii3ContextTrimmer\Command\TrimCommand;
-use Codechap\Yii3ContextTrimmer\ContextTrimmer;
+use Codechap\ContextTrimmer\Command\TrimCommand;
+use Codechap\ContextTrimmer\ContextTrimmer;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Console\Tester\CommandTester;
+
+use function file_put_contents;
+use function json_decode;
+use function substr_count;
+use function sys_get_temp_dir;
+use function tempnam;
+use function trim;
+use function unlink;
 
 final class TrimCommandTest extends TestCase
 {

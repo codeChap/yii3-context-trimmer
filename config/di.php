@@ -2,8 +2,9 @@
 
 declare(strict_types=1);
 
-use Codechap\Yii3ContextTrimmer\ContextTrimmer;
-use Codechap\Yii3ContextTrimmer\ContextTrimmerInterface;
+use Codechap\ContextTrimmer\ContextTrimmer;
+use Codechap\ContextTrimmer\ContextTrimmerInterface;
+use Yiisoft\Definitions\Reference;
 
 /** @var array $params */
 
@@ -19,4 +20,5 @@ return [
             'compressWhitespace' => $params['codechap/yii3-context-trimmer']['compressWhitespace'],
         ],
     ],
+    ContextTrimmer::class => Reference::to(ContextTrimmerInterface::class),
 ];

@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Codechap\Yii3ContextTrimmer\Command;
+namespace Codechap\ContextTrimmer\Command;
 
-use Codechap\Yii3ContextTrimmer\ContextTrimmerInterface;
+use Codechap\ContextTrimmer\ContextTrimmerInterface;
 use InvalidArgumentException;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -12,6 +12,14 @@ use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Console\Style\SymfonyStyle;
+
+use function ctype_digit;
+use function file_exists;
+use function file_get_contents;
+use function is_readable;
+use function json_encode;
+use function stream_get_contents;
 
 #[AsCommand(
     name: 'context:trim',
@@ -40,10 +48,11 @@ final class TrimCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
+        $io = new SymfonyStyle($input, $output);
         $text = $this->readInput($input);
 
         if ($text === null) {
-            $output->writeln('<error>No input text provided. Pass a file path or pipe text via stdin.</error>');
+            $io->error('No input text provided. Pass a file path or pipe text via stdin.');
 
             return Command::FAILURE;
         }
@@ -52,7 +61,7 @@ final class TrimCommand extends Command
             $trimmer = $this->buildTrimmer($input);
             $segments = $trimmer->trim($text);
         } catch (InvalidArgumentException $e) {
-            $output->writeln('<error>' . $e->getMessage() . '</error>');
+            $io->error($e->getMessage());
 
             return Command::FAILURE;
         }
