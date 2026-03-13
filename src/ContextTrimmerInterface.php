@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Codechap\ContextTrimmer;
+namespace Codechap\Yii3ContextTrimmer;
 
 /**
  * Interface for tokenizer-agnostic text preprocessing to trim content
@@ -25,7 +25,7 @@ interface ContextTrimmerInterface
     /**
      * Return a new instance with the given max token limit per segment.
      *
-     * @throws \Codechap\ContextTrimmer\Exception\InvalidTokenLimitException If $maxTokens is less than 2.
+     * @throws \Codechap\Yii3ContextTrimmer\Exception\InvalidTokenLimitException If $maxTokens is less than 2.
      */
     public function withMaxTokens(int $maxTokens): static;
 

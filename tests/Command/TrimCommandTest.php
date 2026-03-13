@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Codechap\ContextTrimmer\Tests\Command;
+namespace Codechap\Yii3ContextTrimmer\Tests\Command;
 
-use Codechap\ContextTrimmer\Command\TrimCommand;
-use Codechap\ContextTrimmer\ContextTrimmer;
+use Codechap\Yii3ContextTrimmer\Command\TrimCommand;
+use Codechap\Yii3ContextTrimmer\ContextTrimmer;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Console\Tester\CommandTester;
 

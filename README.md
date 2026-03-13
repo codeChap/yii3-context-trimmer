@@ -21,7 +21,7 @@ For Yii3 applications using the config plugin, the DI bindings and params are re
 Inject the interface to get a pre-configured trimmer from the DI container:
 
 ```php
-use Codechap\ContextTrimmer\ContextTrimmerInterface;
+use Codechap\Yii3ContextTrimmer\ContextTrimmerInterface;
 
 final class MyService
 {
@@ -44,7 +44,7 @@ Default configuration is handled via `params.php` — see [Configuration](#yii3-
 ### Standalone
 
 ```php
-use Codechap\ContextTrimmer\ContextTrimmer;
+use Codechap\Yii3ContextTrimmer\ContextTrimmer;
 
 $trimmer = new ContextTrimmer();
 

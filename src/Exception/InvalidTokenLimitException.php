@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Codechap\ContextTrimmer\Exception;
+namespace Codechap\Yii3ContextTrimmer\Exception;
 
 use InvalidArgumentException;
 

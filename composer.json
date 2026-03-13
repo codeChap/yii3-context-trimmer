@@ -6,12 +6,12 @@
     "keywords": ["yii3", "llm", "context", "trimmer", "tokenizer", "ai"],
     "autoload": {
         "psr-4": {
-            "Codechap\\ContextTrimmer\\": "src/"
+            "Codechap\\Yii3ContextTrimmer\\": "src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "Codechap\\ContextTrimmer\\Tests\\": "tests/"
+            "Codechap\\Yii3ContextTrimmer\\Tests\\": "tests/"
         }
     },
     "authors": [

@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Codechap\ContextTrimmer;
+namespace Codechap\Yii3ContextTrimmer;
 
-use Codechap\ContextTrimmer\Exception\InvalidTokenLimitException;
+use Codechap\Yii3ContextTrimmer\Exception\InvalidTokenLimitException;
 
 use function array_filter;
 use function array_values;

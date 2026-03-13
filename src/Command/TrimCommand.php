@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Codechap\ContextTrimmer\Command;
+namespace Codechap\Yii3ContextTrimmer\Command;
 
-use Codechap\ContextTrimmer\ContextTrimmerInterface;
+use Codechap\Yii3ContextTrimmer\ContextTrimmerInterface;
 use InvalidArgumentException;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;

@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-use Codechap\ContextTrimmer\ContextTrimmer;
-use Codechap\ContextTrimmer\ContextTrimmerInterface;
+use Codechap\Yii3ContextTrimmer\ContextTrimmer;
+use Codechap\Yii3ContextTrimmer\ContextTrimmerInterface;
 use Yiisoft\Definitions\Reference;
 
 /** @var array $params */

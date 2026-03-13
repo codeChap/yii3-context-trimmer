@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Codechap\ContextTrimmer\Tests;
+namespace Codechap\Yii3ContextTrimmer\Tests;
 
-use Codechap\ContextTrimmer\ContextTrimmer;
-use Codechap\ContextTrimmer\ContextTrimmerInterface;
-use Codechap\ContextTrimmer\Exception\InvalidTokenLimitException;
+use Codechap\Yii3ContextTrimmer\ContextTrimmer;
+use Codechap\Yii3ContextTrimmer\ContextTrimmerInterface;
+use Codechap\Yii3ContextTrimmer\Exception\InvalidTokenLimitException;
 use PHPUnit\Framework\TestCase;
 
 use function count;
