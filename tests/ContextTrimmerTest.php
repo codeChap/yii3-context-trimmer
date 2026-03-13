@@ -63,13 +63,31 @@ final class ContextTrimmerTest extends TestCase
     public function testNegativeTokenLimit(): void
     {
         $this->expectException(InvalidArgumentException::class);
-        $this->trimmer->withMaxTokens(-1)->trim('Some text');
+        $this->trimmer->withMaxTokens(-1);
     }
 
     public function testZeroTokenLimit(): void
     {
         $this->expectException(InvalidArgumentException::class);
-        $this->trimmer->withMaxTokens(0)->trim('Some text');
+        $this->trimmer->withMaxTokens(0);
+    }
+
+    public function testOneTokenLimit(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->trimmer->withMaxTokens(1);
+    }
+
+    public function testConstructorThrowsOnInvalidTokens(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        new ContextTrimmer(maxTokens: 0);
+    }
+
+    public function testConstructorThrowsOnOneToken(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        new ContextTrimmer(maxTokens: 1);
     }
 
     public function testUnderTokenLimitReturnsSingleSegment(): void
@@ -79,18 +97,6 @@ final class ContextTrimmerTest extends TestCase
         $result = $this->trimmer->withMaxTokens(50)->trim($input);
 
         $this->assertCount(1, $result);
-    }
-
-    public function testMaxTokensOne(): void
-    {
-        $input = 'This is a test';
-
-        $result = $this->trimmer->withMaxTokens(1)->trim($input);
-
-        $this->assertIsArray($result);
-        foreach ($result as $segment) {
-            $this->assertNotEmpty($segment);
-        }
     }
 
     public function testRemoveDuplicateLines(): void
@@ -108,13 +114,30 @@ final class ContextTrimmerTest extends TestCase
         $this->assertEquals(1, substr_count($joined, 'Line three'));
     }
 
+    public function testDeduplicateLinesPreservesBlankLines(): void
+    {
+        $input = "Paragraph one\n\nParagraph two\n\nParagraph one";
+
+        $result = $this->trimmer
+            ->withMaxTokens(200)
+            ->withRemoveDuplicateLines(true)
+            ->withCompressWhitespace(false)
+            ->trim($input);
+
+        $joined = implode('', $result);
+        // The blank lines should be preserved as separators
+        $this->assertStringContainsString("\n\n", $joined);
+        // The duplicate "Paragraph one" should be removed
+        $this->assertEquals(1, substr_count($joined, 'Paragraph one'));
+    }
+
     public function testRemoveShortWords(): void
     {
         $input = 'I am a big fan of the great outdoors.';
 
         $result = $this->trimmer
             ->withMaxTokens(100)
-            ->withRemoveShortWords(true, 2)
+            ->withRemoveShortWords(true, 3)
             ->trim($input);
 
         $joined = implode(' ', $result);
@@ -122,6 +145,22 @@ final class ContextTrimmerTest extends TestCase
         $this->assertStringNotContainsString(' of ', $joined);
         $this->assertStringContainsString('big', $joined);
         $this->assertStringContainsString('fan', $joined);
+    }
+
+    public function testMinWordLengthKeepsWordsAtExactLength(): void
+    {
+        $input = 'I am a big fan';
+
+        $result = $this->trimmer
+            ->withMaxTokens(100)
+            ->withRemoveShortWords(true, 2)
+            ->trim($input);
+
+        $joined = implode(' ', $result);
+        // "am" has length 2 and minWordLength is 2, so it should be KEPT
+        $this->assertStringContainsString('am', $joined);
+        // "I" and "a" have length 1, shorter than 2, so removed
+        $this->assertStringNotContainsString(' I ', $joined);
     }
 
     public function testRemoveExtraneous(): void
@@ -181,7 +220,7 @@ final class ContextTrimmerTest extends TestCase
         $result = $this->trimmer
             ->withMaxTokens(8192)
             ->withRemoveDuplicateLines(true)
-            ->withRemoveShortWords(true, 2)
+            ->withRemoveShortWords(true, 3)
             ->withRemoveExtraneous(true)
             ->trim($input);
 
@@ -189,5 +228,82 @@ final class ContextTrimmerTest extends TestCase
         $this->assertEquals(1, substr_count($joined, 'Welcome'));
         $this->assertStringContainsString('lodge', $joined);
         $this->assertStringContainsString('Enjoy', $joined);
+    }
+
+    public function testCompressWhitespaceConfigurable(): void
+    {
+        $input = "Hello    world";
+
+        $compressed = $this->trimmer
+            ->withMaxTokens(100)
+            ->withCompressWhitespace(true)
+            ->trim($input);
+
+        $uncompressed = $this->trimmer
+            ->withMaxTokens(100)
+            ->withCompressWhitespace(false)
+            ->trim($input);
+
+        $this->assertSame('Hello world', $compressed[0]);
+        $this->assertSame('Hello    world', $uncompressed[0]);
+    }
+
+    public function testSentenceSplitHandlesAbbreviations(): void
+    {
+        $input = 'Dr. Smith went home. He rested.';
+
+        $result = $this->trimmer
+            ->withMaxTokens(100)
+            ->trim($input);
+
+        // Should fit in one segment, not split at "Dr."
+        $this->assertCount(1, $result);
+        $this->assertSame('Dr. Smith went home. He rested.', $result[0]);
+    }
+
+    public function testSentenceSplitHandlesDecimals(): void
+    {
+        $input = 'The value is 3.14 approximately. That is pi.';
+
+        $result = $this->trimmer
+            ->withMaxTokens(100)
+            ->trim($input);
+
+        $this->assertCount(1, $result);
+        $this->assertStringContainsString('3.14', $result[0]);
+    }
+
+    public function testSegmentTokenCountAccuracy(): void
+    {
+        // This test verifies that actual concatenated segments respect the budget,
+        // not just the additive sum of individual sentence token counts.
+        $input = 'First sentence here. Second sentence here. Third sentence here. Fourth sentence here.';
+
+        $trimmer = $this->trimmer->withMaxTokens(7);
+        $result = $trimmer->trim($input);
+
+        foreach ($result as $segment) {
+            $this->assertLessThanOrEqual(7, $trimmer->countTokens($segment));
+        }
+    }
+
+    public function testWithCompressWhitespaceImmutability(): void
+    {
+        $original = new ContextTrimmer();
+        $modified = $original->withCompressWhitespace(false);
+
+        $this->assertNotSame($original, $modified);
+    }
+
+    public function testSentenceSplitAbbreviationsDoNotPreventRealSplits(): void
+    {
+        // Abbreviations should not prevent splitting at real sentence boundaries
+        $input = 'Dr. Smith went home. He rested.';
+
+        $trimmer = $this->trimmer->withMaxTokens(5);
+        $result = $trimmer->trim($input);
+
+        // Should be split into multiple segments since budget is small
+        $this->assertGreaterThan(1, count($result));
     }
 }
